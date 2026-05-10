@@ -3,13 +3,6 @@
 version = 4
 
 [[package]]
-name = "dict_data"
-version = "0.1.0"
-dependencies = [
- "phf",
-]
-
-[[package]]
 name = "fastrand"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -126,7 +119,7 @@ dependencies = [
 name = "tf-idf"
 version = "0.1.0"
 dependencies = [
- "dict_data",
+ "phf",
 ]
 
 [[package]]
