@@ -1,3 +1,4 @@
+// todo: use Tire for DICT
 use dict_data::DICT;
 
 use memmap2::Mmap;
