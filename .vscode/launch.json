@@ -1,0 +1,44 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug executable 'tf-idf'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--bin=tf-idf",
+                    "--package=tf-idf",
+                    "--",
+                    "D:\\THUCNews\\科技\\",
+                    "iphone"
+                ]
+            },
+            "args": []
+        },
+        {
+            "name": "Debug unit tests in executable 'tf-idf'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--bin=tf-idf",
+                    "--package=tf-idf"
+                ]
+            }
+        },
+        {
+            "name": "Debug unit tests in library 'dict_data'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--package=dict_data"
+                ]
+            }
+        }
+    ]
+}
