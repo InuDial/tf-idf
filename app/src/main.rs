@@ -82,7 +82,7 @@ fn tokenize(content: impl AsRef<str>) -> Vec<usize> {
 
 const INDEX_NAME: &str = ".tf-idf.bin";
 /// Should be greater than 0
-const INDEX_VERSION: u64 = 89;
+const INDEX_VERSION: u64 = 90;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<_> = env::args().collect();
