@@ -1,4 +1,4 @@
-// todo: use Tire for DICT
+// todo: use Trie for DICT
 use dict_data::DICT;
 
 mod data;
