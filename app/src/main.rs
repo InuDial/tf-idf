@@ -277,6 +277,8 @@ fn search(folder: impl AsRef<Path>, keyword: &str) -> Option<PathBuf> {
 
     let boundaries: Vec<usize> = keyword.char_indices().map(|(i, _)| i).collect();
     let total = keyword.len();
+
+    // Traversal substrings of keyword
     for &start in &boundaries {
         for &end in boundaries
             .iter()
