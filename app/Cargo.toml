@@ -8,6 +8,8 @@ license = "MIT"
 bytecheck = "0.8.2"
 dict_data = { path = "../dict_data" }
 memmap2 = "0.9.10"
+mimalloc = "0.1.50"
 pathdiff = "0.2.3"
+rayon = "1.12.0"
 rkyv = "0.8.16"
 serde = { version = "1.0.228", features = ["derive"] }

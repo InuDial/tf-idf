@@ -38,31 +38,20 @@ impl<D: Fallible + ?Sized> DeserializeWith<rkyv::vec::ArchivedVec<u8>, PathBuf, 
     }
 }
 
-#[derive(Archive, Serialize, Deserialize)]
-#[repr(C)]
-pub struct Metadata {
-    #[rkyv(with = PathBytes)]
-    pub path: PathBuf,
-    pub content: String,
-    pub split: Vec<usize>,
-}
+pub fn term_freq(content:String, split: Vec<usize>) -> Vec<(String, f64)> {
+    let inv_term_count = 1f64 / (split.len() + 1) as f64;
 
-impl Metadata {
-    pub fn term_freq(&self) -> HashMap<String, f64> {
-        let inv_term_count = 1f64 / (self.split.len() + 1) as f64;
+    let mut ret = HashMap::with_capacity(split.len() + 1);
+    let mut l = 0;
 
-        let mut ret = HashMap::new();
-        let mut l = 0;
-
-        let mut view = &self.content[..];
-        for &r in &self.split {
-            let entry = ret.entry(view[..r - l].to_string());
-            view = &view[r - l..];
-            *entry.or_insert(0.) += inv_term_count;
-            l = r;
-        }
-        ret
+    let mut view = &content[..];
+    for &r in &split {
+        let entry = ret.entry(&view[..r-l]);
+        *entry.or_insert(0) += 1;
+        view = &view[r-l..];
+        l = r;
     }
+    ret.into_iter().map(move |(i, v)| (i.to_owned(), v as f64 * inv_term_count)).collect()
 }
 
 #[derive(Archive, Serialize, Deserialize, CheckBytes)]
@@ -75,15 +64,13 @@ pub struct Library {
 }
 
 impl Library {
-    pub fn new(articles: impl IntoIterator<Item = Metadata>) -> Self {
-        let articles: Vec<_> = articles.into_iter().collect();
-        let n = articles.len() as f64;
+    pub fn new(names: Vec<PathBuf>, metas: impl IntoIterator<Item = impl IntoIterator<Item = (String, f64)>>) -> Self {
+        // let n = articles.len() as f64;
+        let n = names.len();
         let mut occurrences: HashMap<String, Vec<(u64, f64)>> = HashMap::new();
 
-        for (id, article) in articles.iter().enumerate() {
-            let tf_map = article.term_freq();
-
-            for (term, freq) in tf_map {
+        for (id, article) in metas.into_iter().enumerate() {
+            for (term, freq) in article {
                 occurrences
                     .entry(term.to_ascii_uppercase())
                     .or_default()
@@ -93,7 +80,7 @@ impl Library {
 
         for occ in occurrences.values_mut() {
             let freq_sum: f64 = occ.iter().map(|x| x.1).sum();
-            let idf = (n / occ.len() as f64).ln();
+            let idf = (n as f64/ occ.len() as f64).ln();
 
             for (_i, f) in occ {
                 *f *= idf / freq_sum;
@@ -101,7 +88,7 @@ impl Library {
         }
 
         Self {
-            articles: articles.into_iter().map(|meta| meta.path).collect(),
+            articles: names,
             tf_idf: occurrences,
         }
     }

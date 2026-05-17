@@ -1,7 +1,13 @@
-// todo: use Trie for DICT
-use dict_data::DICT;
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
+use rayon::prelude::*;
+
+// use dict_data::DICT;
+use crate::trie::TRIE;
 
 mod data;
+mod trie;
 
 use memmap2::Mmap;
 use rkyv::access;
@@ -13,8 +19,9 @@ use std::error::Error;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::data::{ArchivedLibrary, Library, Metadata, path_from_bytes};
+use crate::data::{ArchivedLibrary, Library, path_from_bytes, term_freq};
 
 const MAX_TERM_LENGTH: usize = 50;
 
@@ -24,16 +31,41 @@ fn tokenize(content: impl AsRef<str>) -> Vec<usize> {
     let n = content.len();
     let mut f = vec![0f64; n + 1];
     let mut next = vec![n; n + 1];
-    let mut cur = String::with_capacity(n);
+    // let mut cur = String::with_capacity(n);
     for i in (0..n).rev() {
-        cur.clear();
+        // cur.clear();
+        let mut all_alphabet = true;
+        let mut none_alphabet = true;
+        let mut empty_term_value = 0.0;
+        let mut node = &*TRIE;
         for j in i..n.min(i + MAX_TERM_LENGTH) {
-            cur.push(content[j].1);
-            let nf = f[j + 1] + get_term_value_log(&cur);
+            // cur.push(content[j].1);
+            if content[j].1.is_ascii_alphabetic() {
+                none_alphabet = false;
+                if !all_alphabet {
+                    empty_term_value = -100.0;
+                }
+            } else {
+                all_alphabet = false;
+                if !none_alphabet {
+                    empty_term_value = -100.0;
+                }
+            }
+            let next_node = node.seek_char(content[j].1);
+            let nf = f[j + 1]
+                + next_node
+                    .and_then(|n| n.value())
+                    .unwrap_or(empty_term_value);
 
             if f[i] <= nf {
                 f[i] = nf;
                 next[i] = j + 1;
+            }
+            match next_node {
+                Some(n) => node = n,
+                None => {
+                    break;
+                }
             }
         }
     }
@@ -48,21 +80,9 @@ fn tokenize(content: impl AsRef<str>) -> Vec<usize> {
     ret
 }
 
-fn get_term_value_log(term: &str) -> f64 {
-    DICT.get(term).map(|x| (*x as f64).ln()).unwrap_or_else(|| {
-        let alphabetic: usize = term.chars().map(|c| c.is_alphabetic() as usize).sum();
-
-        if alphabetic == 0 || alphabetic == term.len() {
-            0.
-        } else {
-            -100.
-        }
-    })
-}
-
 const INDEX_NAME: &str = ".tf-idf.bin";
 /// Should be greater than 0
-const INDEX_VERSION: u64 = 44;
+const INDEX_VERSION: u64 = 89;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<_> = env::args().collect();
@@ -98,50 +118,54 @@ fn get_library(folder: impl AsRef<Path>) -> Result<Library, Box<dyn Error>> {
         .into());
     }
 
-    let mut metas = Vec::new();
-
     let count = fs::read_dir(folder)?
         .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().is_file()) // 仅统计文件，排除文件夹
+        .filter(|entry| entry.file_type().is_ok_and(|f| f.is_file())) // 仅统计文件，排除文件夹
         .count();
-    let mut cur_count = 0;
+    let cur_count = AtomicUsize::new(0);
     let period = (count / 100).max(1);
 
-    for entry in fs::read_dir(folder)? {
-        if period < 10 {
-            cur_count += 1;
-            println!("{}/{}...", cur_count, count);
-        } else {
-            if cur_count % period == 0 {
-                println!("{}%...", cur_count / period);
-            }
-            cur_count += 1;
-        }
-        let entry = entry?;
-        let path = entry.path();
-        let rpath = pathdiff::diff_paths(&path, folder).unwrap();
-        // println!("{rpath:?}");
-        if path.file_name().and_then(|x| x.to_str()) == Some(INDEX_NAME) {
-            continue;
-        }
-        let content = fs::read_to_string(&path)?;
-        let split = tokenize(&content);
-
-        metas.push(Metadata {
-            path: rpath,
-            content,
-            split,
+    let read_dir: Vec<_> = fs::read_dir(folder)?
+        .filter_map(|res| match res {
+            Ok(entry) if entry.file_name().to_str() != Some(INDEX_NAME) => Some(entry),
+            _ => None,
         })
-    }
+        .collect();
+    let (names, metas): (Vec<_>, Vec<_>) = read_dir
+        .into_par_iter()
+        .filter_map(|entry| {
+            let prev_count = cur_count.fetch_add(1, Ordering::Relaxed);
+            if period < 10 {
+                println!("{}/{}...", prev_count + 1, count);
+            } else {
+                if prev_count % period == 0 {
+                    println!("{}%...", prev_count / period);
+                }
+            }
+            let path = entry.path();
+            let rpath = pathdiff::diff_paths(&path, folder).unwrap();
+            // println!("{rpath:?}");
+            let content = match std::fs::read_to_string(&path) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("Warning: 跳过文件 {:?}, 错误原因: {}", path, e);
+                    return None; // 这里的 return 只退出当前闭包，不影响其他并行的线程
+                }
+            };
+            let split = tokenize(&content);
 
-    Ok(Library::new(metas))
+            Some((rpath, term_freq(content, split)))
+        })
+        .unzip();
+
+    Ok(Library::new(names, metas))
 }
 
 fn construct_index(folder: impl AsRef<Path>) -> Result<(), Box<dyn Error>> {
     let folder = folder.as_ref();
 
     let lib = get_library(folder)?;
-    
+
     let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&lib)?;
 
     let mut file = fs::File::create(folder.join(INDEX_NAME)).unwrap();

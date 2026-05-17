@@ -51,8 +51,23 @@ fn main() {
     )
     .unwrap();
 
-    for (key, value) in pairs {
-        writeln!(f, "    \"{}\" => {},", key, value).unwrap();
+    for (key, value) in &pairs {
+        let value: f64 = value.parse().unwrap();
+        writeln!(f, "    \"{}\" => {:.4},", key, value.ln()).unwrap();
     }
     writeln!(f, "}}").unwrap();
+
+    let trie_path = Path::new(&out_dir).join("trie.rs");
+    let mut f = File::create(&trie_path).unwrap();
+    writeln!(
+        f,
+        "["
+    )
+    .unwrap();
+
+    for (key, value) in &pairs {
+        let value: f64 = value.parse().unwrap();
+        writeln!(f, "    (\"{}\",{:.4}),", key, value.ln()).unwrap();
+    }
+    writeln!(f, "]").unwrap();
 }
