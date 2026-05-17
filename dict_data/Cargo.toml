@@ -5,4 +5,4 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
-phf = { version = "0.13.1", features = ["macros"] }
+# phf = { version = "0.13.1", features = ["macros"] }
