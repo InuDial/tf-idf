@@ -53,7 +53,7 @@ fn main() {
 
     for (key, value) in &pairs {
         let value: f64 = value.parse().unwrap();
-        writeln!(f, "    \"{}\" => {:.4},", key, value.ln()).unwrap();
+        writeln!(f, "    \"{}\" => {},", key, value.ln()).unwrap();
     }
     writeln!(f, "}}").unwrap();
 
