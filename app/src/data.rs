@@ -9,6 +9,8 @@ use rkyv::ser::{Allocator, Writer};
 use rkyv::with::{ArchiveWith, DeserializeWith, Map, SerializeWith};
 use rkyv::{Deserialize, Serialize};
 
+use crate::Term;
+
 pub struct PathBytes;
 
 impl ArchiveWith<PathBuf> for PathBytes {
@@ -60,19 +62,20 @@ pub struct Library {
     #[rkyv(with = Map<PathBytes>)]
     pub articles: Vec<PathBuf>,
     /// term -> [(article_id, value)], value = reletive_freq * idf
-    pub tf_idf: HashMap<String, Vec<(u64, f64)>>,
+    pub tf_idf: HashMap<Term, Vec<(u64, f64)>>,
 }
 
 impl Library {
     pub fn new(names: Vec<PathBuf>, metas: impl IntoIterator<Item = impl IntoIterator<Item = (String, f64)>>) -> Self {
         // let n = articles.len() as f64;
         let n = names.len();
-        let mut occurrences: HashMap<String, Vec<(u64, f64)>> = HashMap::new();
+        let mut occurrences: HashMap<Term, Vec<(u64, f64)>> = HashMap::new();
 
         for (id, article) in metas.into_iter().enumerate() {
             for (term, freq) in article {
+                let upper = term.to_ascii_uppercase();
                 occurrences
-                    .entry(term.to_ascii_uppercase())
+                    .entry(upper.as_str().try_into().unwrap())
                     .or_default()
                     .push((id as u64, freq));
             }

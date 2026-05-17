@@ -11,7 +11,7 @@
                     "--bin=tf-idf",
                     "--package=tf-idf",
                     "--",
-                    "D:\\THUCNews\\科技\\",
+                    "D:\\THUCNews\\Test\\",
                     "iphone"
                 ]
             },

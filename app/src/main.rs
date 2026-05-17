@@ -3,11 +3,15 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use rayon::prelude::*;
 
+mod data;
+mod small_str;
+mod trie;
+
+use crate::small_str::ArchivedSmallString;
 // use dict_data::DICT;
 use crate::trie::TRIE;
-
-mod data;
-mod trie;
+const MAX_TERM_LENGTH: usize = 50;
+type Term = crate::small_str::SmallString<MAX_TERM_LENGTH>;
 
 use memmap2::Mmap;
 use rkyv::access;
@@ -23,8 +27,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::data::{ArchivedLibrary, Library, path_from_bytes, term_freq};
 
-const MAX_TERM_LENGTH: usize = 50;
-
 /// Return split points of content
 fn tokenize(content: impl AsRef<str>) -> Vec<usize> {
     let content: Vec<_> = content.as_ref().char_indices().collect();
@@ -38,7 +40,7 @@ fn tokenize(content: impl AsRef<str>) -> Vec<usize> {
         let mut none_alphabet = true;
         let mut empty_term_value = 0.0;
         let mut node = &*TRIE;
-        for j in i..n.min(i + MAX_TERM_LENGTH) {
+        for j in i..n.min(i + MAX_TERM_LENGTH - 1) {
             // cur.push(content[j].1);
             if content[j].1.is_ascii_alphabetic() {
                 none_alphabet = false;
@@ -82,7 +84,7 @@ fn tokenize(content: impl AsRef<str>) -> Vec<usize> {
 
 const INDEX_NAME: &str = ".tf-idf.bin";
 /// Should be greater than 0
-const INDEX_VERSION: u64 = 90;
+const INDEX_VERSION: u64 = 91;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<_> = env::args().collect();
@@ -225,11 +227,17 @@ fn search(folder: impl AsRef<Path>, keyword: &str) -> Option<PathBuf> {
             .skip_while(|&&b| b <= start)
             .chain(std::iter::once(&total))
         {
-            if let Some(vec) = archived.tf_idf.get(&keyword[start..end]) {
+            let Ok(term): &Result<ArchivedSmallString<_>, _> = &keyword[start..end].try_into()
+            else {
+                break;
+            };
+            dbg!(term.as_ref());
+            if let Some(vec) = archived.tf_idf.get(term) {
                 for ArchivedTuple2(i, value) in vec.iter() {
                     let i = i.to_native() as usize;
                     let value = value.to_native();
-                    *file_value.entry(i).or_insert(0.) += value * (end - start) as f64;
+                    let t = file_value.entry(i).or_insert(0.);
+                    *t += value * (end - start) as f64;
                 }
             }
         }
