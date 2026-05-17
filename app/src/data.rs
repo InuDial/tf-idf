@@ -40,7 +40,7 @@ impl<D: Fallible + ?Sized> DeserializeWith<rkyv::vec::ArchivedVec<u8>, PathBuf, 
     }
 }
 
-pub fn term_freq(content:String, split: Vec<usize>) -> Vec<(String, f64)> {
+pub fn term_freq(content: String, split: Vec<usize>) -> Vec<(String, f64)> {
     let inv_term_count = 1f64 / (split.len() + 1) as f64;
 
     let mut ret = HashMap::with_capacity(split.len() + 1);
@@ -48,12 +48,14 @@ pub fn term_freq(content:String, split: Vec<usize>) -> Vec<(String, f64)> {
 
     let mut view = &content[..];
     for &r in &split {
-        let entry = ret.entry(&view[..r-l]);
+        let entry = ret.entry(&view[..r - l]);
         *entry.or_insert(0) += 1;
-        view = &view[r-l..];
+        view = &view[r - l..];
         l = r;
     }
-    ret.into_iter().map(move |(i, v)| (i.to_owned(), v as f64 * inv_term_count)).collect()
+    ret.into_iter()
+        .map(move |(i, v)| (i.to_owned(), v as f64 * inv_term_count))
+        .collect()
 }
 
 #[derive(Archive, Serialize, Deserialize, CheckBytes)]
@@ -66,7 +68,10 @@ pub struct Library {
 }
 
 impl Library {
-    pub fn new(names: Vec<PathBuf>, metas: impl IntoIterator<Item = impl IntoIterator<Item = (String, f64)>>) -> Self {
+    pub fn new(
+        names: Vec<PathBuf>,
+        metas: impl IntoIterator<Item = impl IntoIterator<Item = (String, f64)>>,
+    ) -> Self {
         // let n = articles.len() as f64;
         let n = names.len();
         let mut occurrences: HashMap<Term, Vec<(u64, f64)>> = HashMap::new();
@@ -83,7 +88,7 @@ impl Library {
 
         for occ in occurrences.values_mut() {
             let freq_sum: f64 = occ.iter().map(|x| x.1).sum();
-            let idf = (n as f64/ occ.len() as f64).ln();
+            let idf = (n as f64 / occ.len() as f64).ln();
 
             for (_i, f) in occ {
                 *f *= idf / freq_sum;
