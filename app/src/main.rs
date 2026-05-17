@@ -4,13 +4,14 @@ use dict_data::DICT;
 mod data;
 
 use memmap2::Mmap;
+use rkyv::access;
 use rkyv::tuple::ArchivedTuple2;
 
 use std::collections::HashMap;
 use std::env;
 use std::error::Error;
 use std::fs;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 use crate::data::{ArchivedLibrary, Library, Metadata, path_from_bytes};
@@ -60,6 +61,8 @@ fn get_term_value_log(term: &str) -> f64 {
 }
 
 const INDEX_NAME: &str = ".tf-idf.bin";
+/// Should be greater than 0
+const INDEX_VERSION: u64 = 44;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<_> = env::args().collect();
@@ -84,7 +87,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 }
 
-fn construct_index(folder: impl AsRef<Path>) -> Result<(), Box<dyn Error>> {
+fn get_library(folder: impl AsRef<Path>) -> Result<Library, Box<dyn Error>> {
     let folder = folder.as_ref();
 
     if !folder.is_dir() {
@@ -131,12 +134,19 @@ fn construct_index(folder: impl AsRef<Path>) -> Result<(), Box<dyn Error>> {
         })
     }
 
-    let mut file = fs::File::create(folder.join(INDEX_NAME)).unwrap();
+    Ok(Library::new(metas))
+}
 
-    let lib = Library::new(metas);
+fn construct_index(folder: impl AsRef<Path>) -> Result<(), Box<dyn Error>> {
+    let folder = folder.as_ref();
 
+    let lib = get_library(folder)?;
+    
     let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&lib)?;
 
+    let mut file = fs::File::create(folder.join(INDEX_NAME)).unwrap();
+
+    file.write_all(&INDEX_VERSION.to_le_bytes()).unwrap();
     file.write_all(&bytes).unwrap();
 
     println!("Finished indexing for {}.", folder.to_string_lossy());
@@ -155,14 +165,29 @@ fn search(folder: impl AsRef<Path>, keyword: &str) -> Option<PathBuf> {
         construct_index(folder).unwrap();
     }
 
-    let file = fs::File::open(index_path).unwrap();
+    let mut file = fs::File::open(&index_path).unwrap();
+    let mut version_slice = 0u64.to_le_bytes();
+    file.read_exact(&mut version_slice).unwrap();
+
+    let version = u64::from_le_bytes(version_slice);
+
+    if version != INDEX_VERSION {
+        println!("Index out of date, recreating...");
+        drop(file);
+        construct_index(folder).unwrap();
+        file = fs::File::open(&index_path).unwrap();
+    }
 
     let mmap = unsafe { Mmap::map(&file).unwrap() };
-    let archived = unsafe {
-        let root_pos = mmap.len() - std::mem::size_of::<ArchivedLibrary>();
-        let ptr = mmap.as_ptr().add(root_pos) as *const <Library as rkyv::Archive>::Archived;
-        &*ptr
-    };
+    let archived = access::<ArchivedLibrary, rkyv::rancor::Error>(&mmap[8..]).unwrap();
+    // let archived = unsafe {
+    //     rkyv::access_unchecked::<ArchivedLibrary>(&mmap)
+    // };
+    // let archived = unsafe {
+    //     let root_pos = mmap.len() - std::mem::size_of::<ArchivedLibrary>();
+    //     let ptr = mmap.as_ptr().add(root_pos) as *const <Library as rkyv::Archive>::Archived;
+    //     &*ptr
+    // };
 
     let mut file_value: HashMap<usize, f64> = HashMap::new();
 
