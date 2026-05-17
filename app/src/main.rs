@@ -154,9 +154,8 @@ fn get_library(folder: impl AsRef<Path>) -> Result<Library, Box<dyn Error>> {
                     return None; // 这里的 return 只退出当前闭包，不影响其他并行的线程
                 }
             };
-            let split = tokenize(&content);
-
-            Some((rpath, term_freq(content, split)))
+            
+            Some((rpath, term_freq(content)))
         })
         .unzip();
 

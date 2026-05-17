@@ -9,7 +9,7 @@ use rkyv::ser::{Allocator, Writer};
 use rkyv::with::{ArchiveWith, DeserializeWith, Map, SerializeWith};
 use rkyv::{Deserialize, Serialize};
 
-use crate::Term;
+use crate::{Term, tokenize};
 
 pub struct PathBytes;
 
@@ -40,7 +40,8 @@ impl<D: Fallible + ?Sized> DeserializeWith<rkyv::vec::ArchivedVec<u8>, PathBuf, 
     }
 }
 
-pub fn term_freq(content: String, split: Vec<usize>) -> Vec<(String, f64)> {
+pub fn term_freq(content: String) -> Vec<(String, f64)> {
+    let split = tokenize(&content);
     let inv_term_count = 1f64 / (split.len() + 1) as f64;
 
     let mut ret = HashMap::with_capacity(split.len() + 1);
