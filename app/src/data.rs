@@ -42,7 +42,7 @@ impl<D: Fallible + ?Sized> DeserializeWith<rkyv::vec::ArchivedVec<u8>, PathBuf, 
 
 pub fn term_freq(content: String) -> Vec<(String, f64)> {
     let split = tokenize(&content);
-    let inv_term_count = 1f64 / (split.len() + 1) as f64;
+    let inv_term_count = 1.0 / (split.len() + 1) as f64;
 
     let mut ret = HashMap::with_capacity(split.len() + 1);
     let mut l = 0;
