@@ -46,7 +46,7 @@ impl Node {
     pub fn seek_char(&self, path: char) -> Option<&Node> {
         let mut buf = [0u8; 4];
         let bytes = path.encode_utf8(&mut buf).as_bytes();
-        self.seek(&bytes)
+        self.seek(bytes)
     }
 }
 

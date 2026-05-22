@@ -72,9 +72,9 @@ impl<const N: usize> AsRef<str> for ArchivedSmallString<N> {
     }
 }
 
-impl<const N: usize> Into<String> for SmallString<N> {
-    fn into(self) -> String {
-        let s: &str = self.as_ref();
+impl<const N: usize> From<SmallString<N>> for String {
+    fn from(value: SmallString<N>) -> Self {
+        let s: &str = value.as_ref();
         String::from(s)
     }
 }

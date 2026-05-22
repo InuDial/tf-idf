@@ -53,7 +53,7 @@ impl CharType {
             Self::AsciiOther
         } else if CHINESE_PUNCTUATIONS.contains(c) {
             Self::ChinesePunctuation
-        } else if c.is_whitespace(){
+        } else if c.is_whitespace() {
             Self::WhiteSpace
         } else {
             Self::Other
@@ -84,8 +84,7 @@ fn tokenize(content: impl AsRef<str>) -> Vec<usize> {
             if utf8_len > MAX_TERM_LENGTH {
                 utf8_len -= content[sub_end].1.len_utf8();
                 sub_end -= 1;
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -158,7 +157,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         let folder = PathBuf::from(&args[1]);
         let keyword = args.into_iter().nth(2).unwrap();
 
-        println!("{:?}", search(folder, &keyword));
+        println!(
+            "{}",
+            search(folder, &keyword)
+                .map(|path| path.display().to_string())
+                .unwrap_or_else(|| String::from("None"))
+        );
         Ok(())
     }
 }
@@ -193,10 +197,8 @@ fn get_library(folder: impl AsRef<Path>) -> Result<Library, Box<dyn Error>> {
             let prev_count = cur_count.fetch_add(1, Ordering::Relaxed);
             if period < 10 {
                 println!("{}/{}...", prev_count + 1, count);
-            } else {
-                if prev_count % period == 0 {
-                    println!("{}%...", prev_count / period);
-                }
+            } else if prev_count.is_multiple_of(period) {
+                println!("{}%...", prev_count / period);
             }
             let path = entry.path();
             let rpath = pathdiff::diff_paths(&path, folder).unwrap();
