@@ -56,6 +56,9 @@ pub fn term_freq(content: String) -> Vec<(String, f64)> {
         view = &view[r - l..];
         l = r;
     }
+    if !view.is_empty() {
+        *ret.entry(view).or_insert(0) += 1;
+    }
     ret.into_iter()
         .map(move |(i, v)| (i.to_owned(), v as f64 * inv_term_count))
         .collect()

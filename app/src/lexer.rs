@@ -23,12 +23,12 @@ impl CharType {
             Self::AsciiDigit
         } else if c.is_ascii_punctuation() {
             Self::AsciiPunctuation
+        } else if c.is_whitespace() {
+            Self::WhiteSpace
         } else if c.is_ascii() {
             Self::AsciiOther
         } else if CHINESE_PUNCTUATIONS.contains(c) {
             Self::ChinesePunctuation
-        } else if c.is_whitespace() {
-            Self::WhiteSpace
         } else {
             Self::Other
         }
