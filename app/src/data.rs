@@ -9,7 +9,8 @@ use rkyv::ser::{Allocator, Writer};
 use rkyv::with::{ArchiveWith, DeserializeWith, Map, SerializeWith};
 use rkyv::{Deserialize, Serialize};
 
-use crate::{Term, tokenize};
+use crate::Term;
+use crate::lexer::tokenize;
 
 pub struct PathBytes;
 
