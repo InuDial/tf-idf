@@ -27,8 +27,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::data::{ArchivedLibrary, Library, path_from_bytes, term_freq};
 
 const INDEX_NAME: &str = ".tf-idf.bin";
-/// Should be greater than 0
-const INDEX_VERSION: u64 = 91;
+pub const INDEX_VERSION: u64 = include!(concat!(env!("OUT_DIR"), "/version.rs"));
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<_> = env::args().collect();
