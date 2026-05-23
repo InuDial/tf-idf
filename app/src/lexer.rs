@@ -11,7 +11,6 @@ enum CharType {
     ChinesePunctuation,
     WhiteSpace,
     Other,
-    None,
 }
 
 const CHINESE_PUNCTUATIONS: &str = "，。《》？！￥（）【】；：‘’“”、";
@@ -42,13 +41,18 @@ pub fn tokenize(content: impl AsRef<str>) -> Vec<usize> {
     let n = content.len();
     let mut f = vec![0f64; n + 1];
     let mut next = vec![n; n + 1];
-    let mut alphabet = CharType::None;
+    let mut char_type = CharType::Other;
     let mut sub_end = n;
     let mut utf8_len = 0;
     for i in (0..n).rev() {
         let this_type = CharType::new(content[i].1);
-        if alphabet != this_type {
-            alphabet = this_type;
+        if char_type != this_type {
+            char_type = this_type;
+            sub_end = i;
+            utf8_len = 0;
+        }
+        // Other: split by chars
+        if char_type == CharType::Other {
             sub_end = i;
             utf8_len = 0;
         }
