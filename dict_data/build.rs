@@ -48,7 +48,9 @@ fn main() {
 
     for (key, value) in &pairs {
         let value: f64 = value.parse().unwrap();
-        writeln!(f, "    (\"{}\",{:.4}),", key, value.ln()).unwrap();
+        // From original freq to ln(freq)
+        let ln_value = value.ln();
+        writeln!(f, "    (\"{}\",{:.4}),", key, ln_value).unwrap();
     }
     writeln!(f, "]").unwrap();
 }
