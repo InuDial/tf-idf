@@ -178,7 +178,6 @@ fn search(folder: impl AsRef<Path>, keyword: &str) -> Option<PathBuf> {
             else {
                 break;
             };
-            dbg!(term.as_ref());
             if let Some(vec) = archived.tf_idf.get(term) {
                 for ArchivedTuple2(i, value) in vec.iter() {
                     let i = i.to_native() as usize;
