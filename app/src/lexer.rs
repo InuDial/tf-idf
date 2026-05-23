@@ -2,6 +2,8 @@ use crate::trie::TRIE;
 
 pub const MAX_TERM_LENGTH: usize = 50;
 
+const CHINESE_PUNCTUATIONS: &str = "，。《》？！￥（）【】；：‘’“”、";
+
 #[derive(PartialEq, Eq, Debug)]
 enum CharType {
     AsciiAlphabetic,
@@ -12,8 +14,6 @@ enum CharType {
     WhiteSpace,
     Other,
 }
-
-const CHINESE_PUNCTUATIONS: &str = "，。《》？！￥（）【】；：‘’“”、";
 
 impl CharType {
     fn new(c: char) -> Self {
