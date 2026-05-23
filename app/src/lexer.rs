@@ -2,7 +2,7 @@ use crate::trie::TRIE;
 
 pub const MAX_TERM_LENGTH: usize = 50;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 enum CharType {
     AsciiAlphabetic,
     AsciiDigit,
@@ -97,4 +97,63 @@ pub fn tokenize(content: impl AsRef<str>) -> Vec<usize> {
     }
 
     ret
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tokenize_empty() {
+        assert_eq!(tokenize(""), Vec::<usize>::new());
+    }
+
+    #[test]
+    fn tokenize_ascii_words() {
+        // "hello world" → 按空格切分，空格前为一个 token
+        let result = tokenize("hello world");
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tokenize_chinese_in_dict() {
+        // 常见中文词应在词典中
+        let result = tokenize("人工智能");
+        assert!(!result.is_empty(), "常见中文词应被分词");
+    }
+
+    #[test]
+    fn tokenize_oov_by_char() {
+        // OOV 字符（如日文假名或 emoji）按单字符切分
+        let result = tokenize("あいう");
+        // 每个 Other 类型字符都应产生一个切分点（即 result 非空）
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tokenize_mixed_chinese_and_ascii() {
+        let result = tokenize("hello世界123abc");
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn tokenize_whitespace_only() {
+        let result = tokenize("   \n\t  ");
+        // 纯空白不产生切分点
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn char_type_classification() {
+        assert_eq!(CharType::new('a'), CharType::AsciiAlphabetic);
+        assert_eq!(CharType::new('Z'), CharType::AsciiAlphabetic);
+        assert_eq!(CharType::new('0'), CharType::AsciiDigit);
+        assert_eq!(CharType::new('9'), CharType::AsciiDigit);
+        assert_eq!(CharType::new('.'), CharType::AsciiPunctuation);
+        assert_eq!(CharType::new('@'), CharType::AsciiPunctuation);
+        assert_eq!(CharType::new('\x01'), CharType::AsciiOther);
+        assert_eq!(CharType::new('。'), CharType::ChinesePunctuation);
+        assert_eq!(CharType::new(' '), CharType::WhiteSpace);
+        assert_eq!(CharType::new('あ'), CharType::Other);
+    }
 }

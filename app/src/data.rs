@@ -112,3 +112,84 @@ pub unsafe fn path_from_bytes(field: &rkyv::vec::ArchivedVec<u8>) -> &Path {
     let os_str = unsafe { OsStr::from_encoded_bytes_unchecked(field) };
     Path::new(os_str)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn term_freq_basic() {
+        let tf = term_freq("hello world hello".into());
+        // "hello" 出现 2 次，"world" 出现 1 次
+        let hello = tf.iter().find(|(k, _)| k == "hello").unwrap();
+        let world = tf.iter().find(|(k, _)| k == "world").unwrap();
+        // hello 的频率应为 world 的两倍
+        assert!((hello.1 / world.1 - 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn term_freq_empty() {
+        let tf = term_freq(String::new());
+        assert!(tf.is_empty());
+    }
+
+    #[test]
+    fn term_freq_single_term() {
+        let tf = term_freq("test".into());
+        assert_eq!(tf.len(), 1);
+        assert_eq!(tf[0].0, "test");
+    }
+
+    #[test]
+    fn library_new_empty() {
+        let names: Vec<PathBuf> = vec![];
+        let metas: Vec<Vec<(String, f64)>> = vec![];
+        let lib = Library::new(names, metas);
+        assert!(lib.articles.is_empty());
+        assert!(lib.tf_idf.is_empty());
+    }
+
+    #[test]
+    fn library_new_single_document() {
+        let names = vec![PathBuf::from("file1.txt")];
+        let metas = vec![vec![("hello".into(), 0.5), ("world".into(), 0.5)]];
+        let lib = Library::new(names, metas);
+        assert_eq!(lib.articles.len(), 1);
+        assert_eq!(lib.tf_idf.len(), 2);
+        // 单文档时 idf = ln(1/1) = 0，所有 tf-idf 值应为 0
+        for entries in lib.tf_idf.values() {
+            for &(_, v) in entries {
+                assert_eq!(v, 0.0);
+            }
+        }
+    }
+
+    #[test]
+    fn library_new_multiple_documents() {
+        let names = vec![
+            PathBuf::from("a.txt"),
+            PathBuf::from("b.txt"),
+            PathBuf::from("c.txt"),
+        ];
+        // "common" 出现在所有文档 → idf = ln(3/3) = 0，权重 0
+        // "rare" 只出现在 a.txt → idf = ln(3/1) > 0
+        let metas = vec![
+            vec![("common".into(), 0.5), ("rare".into(), 0.5)],
+            vec![("common".into(), 1.0)],
+            vec![("common".into(), 1.0)],
+        ];
+        let lib = Library::new(names, metas);
+
+        // common 出现在所有文档，idf 为 0
+        let common_key: Term = "COMMON".try_into().unwrap();
+        for &(_, v) in lib.tf_idf.get(&common_key).unwrap() {
+            assert_eq!(v, 0.0);
+        }
+        // rare 只出现在第一个文档
+        let rare_key: Term = "RARE".try_into().unwrap();
+        let rare_entries = lib.tf_idf.get(&rare_key).unwrap();
+        assert_eq!(rare_entries.len(), 1);
+        assert_eq!(rare_entries[0].0, 0);
+        assert!(rare_entries[0].1 > 0.0);
+    }
+}

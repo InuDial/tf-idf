@@ -57,3 +57,71 @@ pub static TRIE: LazyLock<Node> = LazyLock::new(|| {
     }
     root
 });
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn node_insert_and_seek() {
+        let mut node = Node::new();
+        node.insert(b"hello", 1.0);
+        let found = node.seek(b"hello").unwrap();
+        assert_eq!(found.value(), Some(1.0));
+    }
+
+    #[test]
+    fn node_seek_partial() {
+        let mut node = Node::new();
+        node.insert(b"hello", 1.0);
+        let found = node.seek(b"hel");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().value(), None);
+    }
+
+    #[test]
+    fn node_seek_missing() {
+        let mut node = Node::new();
+        node.insert(b"hello", 1.0);
+        assert!(node.seek(b"world").is_none());
+    }
+
+    #[test]
+    fn node_overwrite_value() {
+        let mut node = Node::new();
+        node.insert(b"a", 1.0);
+        node.insert(b"a", 2.0);
+        assert_eq!(node.seek(b"a").unwrap().value(), Some(2.0));
+    }
+
+    #[test]
+    fn node_prefix_shared() {
+        let mut node = Node::new();
+        node.insert(b"ab", 1.0);
+        node.insert(b"ac", 2.0);
+        assert_eq!(node.seek(b"ab").unwrap().value(), Some(1.0));
+        assert_eq!(node.seek(b"ac").unwrap().value(), Some(2.0));
+    }
+
+    #[test]
+    fn static_trie_exists() {
+        // 验证静态 TRIE 已构建，且至少存入了 dict 中的词条
+        assert!(TRIE.seek_char('的').is_some());
+    }
+
+    #[test]
+    fn seek_char_matches_seek() {
+        let mut node = Node::new();
+        node.insert(b"abc", 3.0);
+        assert_eq!(
+            node.seek_char('a')
+                .unwrap()
+                .seek_char('b')
+                .unwrap()
+                .seek_char('c')
+                .unwrap()
+                .value(),
+            Some(3.0)
+        );
+    }
+}

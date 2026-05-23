@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use rkyv::{Archive, Deserialize, Serialize};
 
-#[derive(Archive, Serialize, Deserialize)]
+#[derive(Debug, Archive, Serialize, Deserialize)]
 pub struct SmallString<const N: usize> {
     len: usize,
     /// always legal str
@@ -40,6 +40,7 @@ impl<const N: usize> TryFrom<&str> for ArchivedSmallString<N> {
     }
 }
 
+#[derive(Debug)]
 pub enum FromBytesError {
     TooLarge,
     IllegalString,
@@ -110,3 +111,86 @@ impl<const N: usize> PartialEq for ArchivedSmallString<N> {
 }
 
 impl<const N: usize> Eq for ArchivedSmallString<N> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn try_from_str_normal() {
+        let s: SmallString<10> = "hello".try_into().unwrap();
+        assert_eq!(s.as_ref(), "hello");
+    }
+
+    #[test]
+    fn try_from_str_empty() {
+        let s: SmallString<10> = "".try_into().unwrap();
+        assert_eq!(s.as_ref(), "");
+    }
+
+    #[test]
+    fn try_from_str_exact_max() {
+        let s: SmallString<5> = "abcde".try_into().unwrap();
+        assert_eq!(s.as_ref(), "abcde");
+    }
+
+    #[test]
+    fn try_from_str_too_long() {
+        let r: Result<SmallString<3>, _> = "abcd".try_into();
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn eq_same() {
+        let a: SmallString<10> = "rust".try_into().unwrap();
+        let b: SmallString<10> = "rust".try_into().unwrap();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn eq_different() {
+        let a: SmallString<10> = "rust".try_into().unwrap();
+        let b: SmallString<10> = "go".try_into().unwrap();
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn hash_consistent() {
+        use std::hash::{DefaultHasher, Hasher};
+        let a: SmallString<10> = "test".try_into().unwrap();
+        let b: SmallString<10> = "test".try_into().unwrap();
+        let mut ha = DefaultHasher::new();
+        let mut hb = DefaultHasher::new();
+        a.hash(&mut ha);
+        b.hash(&mut hb);
+        assert_eq!(ha.finish(), hb.finish());
+    }
+
+    #[test]
+    fn into_string() {
+        let s: SmallString<10> = "hello".try_into().unwrap();
+        let string: String = s.into();
+        assert_eq!(string, "hello");
+    }
+
+    #[test]
+    fn from_bytes_valid() {
+        let bytes = b"test";
+        let s: SmallString<10> = SmallString::try_from(&bytes[..]).unwrap();
+        assert_eq!(s.as_ref(), "test");
+    }
+
+    #[test]
+    fn from_bytes_invalid_utf8() {
+        let bytes = [0xFF, 0xFE];
+        let r: Result<SmallString<10>, _> = SmallString::try_from(&bytes[..]);
+        assert!(matches!(r, Err(FromBytesError::IllegalString)));
+    }
+
+    #[test]
+    fn from_bytes_too_large() {
+        let bytes = [0u8; 11];
+        let r: Result<SmallString<10>, _> = SmallString::try_from(&bytes[..]);
+        assert!(matches!(r, Err(FromBytesError::TooLarge)));
+    }
+}
