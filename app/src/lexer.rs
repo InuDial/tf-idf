@@ -58,6 +58,7 @@ pub fn tokenize(content: impl AsRef<str>) -> Vec<usize> {
         }
         utf8_len += content[i].1.len_utf8();
 
+        // 4 bytes per char
         for _ in 0..4 {
             if utf8_len > MAX_TERM_LENGTH {
                 utf8_len -= content[sub_end].1.len_utf8();
