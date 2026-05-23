@@ -35,6 +35,7 @@ impl<D: Fallible + ?Sized> DeserializeWith<rkyv::vec::ArchivedVec<u8>, PathBuf, 
         field: &rkyv::vec::ArchivedVec<u8>,
         _deserializer: &mut D,
     ) -> Result<PathBuf, D::Error> {
+        // SAFETY: should be read from valid, trustable source
         let os_str = unsafe { OsString::from_encoded_bytes_unchecked(field.as_slice().to_vec()) };
         Ok(PathBuf::from(os_str))
     }
@@ -73,7 +74,6 @@ impl Library {
         names: Vec<PathBuf>,
         metas: impl IntoIterator<Item = impl IntoIterator<Item = (String, f64)>>,
     ) -> Self {
-        // let n = articles.len() as f64;
         let n = names.len();
         let mut occurrences: HashMap<Term, Vec<(u64, f64)>> = HashMap::new();
 
@@ -103,6 +103,7 @@ impl Library {
     }
 }
 
+// SAFETY: should be valid bytes
 pub unsafe fn path_from_bytes(field: &rkyv::vec::ArchivedVec<u8>) -> &Path {
     let os_str = unsafe { OsStr::from_encoded_bytes_unchecked(field) };
     Path::new(os_str)

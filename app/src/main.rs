@@ -8,7 +8,6 @@ mod small_str;
 mod trie;
 
 use crate::small_str::ArchivedSmallString;
-// use dict_data::DICT;
 use crate::trie::TRIE;
 const MAX_TERM_LENGTH: usize = 50;
 type Term = crate::small_str::SmallString<MAX_TERM_LENGTH>;
@@ -67,7 +66,6 @@ fn tokenize(content: impl AsRef<str>) -> Vec<usize> {
     let n = content.len();
     let mut f = vec![0f64; n + 1];
     let mut next = vec![n; n + 1];
-    // let mut cur = String::with_capacity(n);
     let mut alphabet = CharType::None;
     let mut sub_end = n;
     let mut utf8_len = 0;
@@ -91,37 +89,23 @@ fn tokenize(content: impl AsRef<str>) -> Vec<usize> {
 
         f[i] = f[sub_end + 1];
         next[i] = sub_end + 1;
-        // cur.clear();
-        // let mut all_alphabet = true;
-        // let mut none_alphabet = true;
-        // let mut empty_term_value = 0.0;
         let mut node = &*TRIE;
         for j in i..n.min(i + MAX_TERM_LENGTH - 1) {
-            // cur.push(content[j].1);
-            // if content[j].1.is_ascii_alphabetic() {
-            //     none_alphabet = false;
-            //     if !all_alphabet {
-            //         empty_term_value = -1e9;
-            //     }
-            // } else {
-            //     all_alphabet = false;
-            //     if !none_alphabet {
-            //         empty_term_value = -1e9;
-            //     }
-            // }
             let next_node = node.seek_char(content[j].1);
-            let nf = f[j + 1] + next_node.and_then(|n| n.value()).unwrap_or(-1e10);
+            let Some(next_node) = next_node else {
+                break;
+            };
 
-            if f[i] <= nf {
-                f[i] = nf;
-                next[i] = j + 1;
-            }
-            match next_node {
-                Some(n) => node = n,
-                None => {
-                    break;
+            if let Some(value) = next_node.value() {
+                let nf = f[j + 1] + value;
+
+                if f[i] <= nf {
+                    f[i] = nf;
+                    next[i] = j + 1;
                 }
             }
+
+            node = next_node;
         }
     }
     let mut ret = Vec::new();
@@ -202,12 +186,11 @@ fn get_library(folder: impl AsRef<Path>) -> Result<Library, Box<dyn Error>> {
             }
             let path = entry.path();
             let rpath = pathdiff::diff_paths(&path, folder).unwrap();
-            // println!("{rpath:?}");
             let content = match std::fs::read_to_string(&path) {
                 Ok(s) => s,
                 Err(e) => {
                     eprintln!("Warning: 跳过文件 {:?}, 错误原因: {}", path, e);
-                    return None; // 这里的 return 只退出当前闭包，不影响其他并行的线程
+                    return None;
                 }
             };
 
@@ -259,8 +242,10 @@ fn search(folder: impl AsRef<Path>, keyword: &str) -> Option<PathBuf> {
         file = fs::File::open(&index_path).unwrap();
     }
 
+    // SAFETY: mmap is unsafe
     let mmap = unsafe { Mmap::map(&file).unwrap() };
     let archived = access::<ArchivedLibrary, rkyv::rancor::Error>(&mmap[8..]).unwrap();
+    // The backup plans to be chosen from
     // let archived = unsafe {
     //     rkyv::access_unchecked::<ArchivedLibrary>(&mmap)
     // };
@@ -275,7 +260,7 @@ fn search(folder: impl AsRef<Path>, keyword: &str) -> Option<PathBuf> {
     let boundaries: Vec<usize> = keyword.char_indices().map(|(i, _)| i).collect();
     let total = keyword.len();
 
-    // Traversal substrings of keyword
+    // TODO: split keywords instead of traversing substrings of keyword
     for &start in &boundaries {
         for &end in boundaries
             .iter()

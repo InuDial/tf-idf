@@ -61,6 +61,7 @@ impl<const N: usize> TryFrom<&[u8]> for SmallString<N> {
 
 impl<const N: usize> AsRef<str> for SmallString<N> {
     fn as_ref(&self) -> &str {
+        // SAFETY: guaranteed to be valid in SmallString
         unsafe { str::from_utf8_unchecked(&self.data[..self.len]) }
     }
 }
@@ -68,6 +69,7 @@ impl<const N: usize> AsRef<str> for SmallString<N> {
 impl<const N: usize> AsRef<str> for ArchivedSmallString<N> {
     fn as_ref(&self) -> &str {
         let len = self.len.to_native() as usize;
+        // TODO: SAFETY
         unsafe { str::from_utf8_unchecked(&self.data[..len]) }
     }
 }

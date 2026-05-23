@@ -1,11 +1,9 @@
 use std::collections::HashSet;
-// build.rs
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
 fn main() {
-    // 告诉 Cargo 如果 dict.txt 变了就重新运行 build.rs
     println!("cargo:rerun-if-changed=dict.txt");
 
     let dict_path = Path::new("dict.txt");
@@ -26,7 +24,10 @@ fn main() {
                 pairs.push((key, value));
             }
             _ => {
-                panic!("dict.txt 每行必须包含两个由空白分隔的字段，实际: {:?}", trimmed);
+                panic!(
+                    "dict.txt 每行必须包含两个由空白分隔的字段，实际: {:?}",
+                    trimmed
+                );
             }
         }
     }
@@ -39,31 +40,11 @@ fn main() {
         .filter(|x| seen.insert(x.0.clone()))
         .collect();
 
-    // 生成 Rust 源码文件
     let out_dir = std::env::var("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join("generated_dict.rs");
-    let mut f = File::create(&dest_path).unwrap();
-
-    // 写入常量数组定义
-    writeln!(
-        f,
-        "phf::phf_map! {{\n"
-    )
-    .unwrap();
-
-    for (key, value) in &pairs {
-        let value: f64 = value.parse().unwrap();
-        writeln!(f, "    \"{}\" => {},", key, value.ln()).unwrap();
-    }
-    writeln!(f, "}}").unwrap();
 
     let trie_path = Path::new(&out_dir).join("trie.rs");
     let mut f = File::create(&trie_path).unwrap();
-    writeln!(
-        f,
-        "["
-    )
-    .unwrap();
+    writeln!(f, "[").unwrap();
 
     for (key, value) in &pairs {
         let value: f64 = value.parse().unwrap();
