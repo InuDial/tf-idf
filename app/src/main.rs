@@ -5,6 +5,7 @@ use rayon::prelude::*;
 
 mod data;
 mod lexer;
+mod map;
 mod small_str;
 mod trie;
 
