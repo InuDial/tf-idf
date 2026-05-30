@@ -1,5 +1,6 @@
 use std::sync::LazyLock;
 
+// TODO: Think about the memory usage here?
 pub struct Node {
     value: Option<f64>,
     next: [Option<Box<Node>>; 256],
