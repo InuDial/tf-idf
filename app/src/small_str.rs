@@ -62,16 +62,15 @@ impl<const N: usize> TryFrom<&[u8]> for SmallString<N> {
 
 impl<const N: usize> AsRef<str> for SmallString<N> {
     fn as_ref(&self) -> &str {
-        // SAFETY: guaranteed to be valid in SmallString
+        // SAFETY: [`SmallString::data`] is guaranteed to be valid
         unsafe { str::from_utf8_unchecked(&self.data[..self.len]) }
     }
 }
 
-impl<const N: usize> AsRef<str> for ArchivedSmallString<N> {
-    fn as_ref(&self) -> &str {
+impl<const N: usize> AsRef<[u8]> for ArchivedSmallString<N> {
+    fn as_ref(&self) -> &[u8] {
         let len = self.len.to_native() as usize;
-        // TODO: SAFETY
-        unsafe { str::from_utf8_unchecked(&self.data[..len]) }
+        &self.data[..len]
     }
 }
 
@@ -91,7 +90,9 @@ impl<const N: usize> Hash for SmallString<N> {
 
 impl<const N: usize> Hash for ArchivedSmallString<N> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let s: &str = self.as_ref();
+        let bytes: &[u8] = self.as_ref();
+        // SAFETY: invalid str will also produce a valid hash
+        let s = unsafe { str::from_utf8_unchecked(bytes) };
         s.hash(state);
     }
 }
