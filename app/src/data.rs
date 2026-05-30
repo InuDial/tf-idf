@@ -74,6 +74,13 @@ pub struct Library {
 }
 
 impl Library {
+    /// Creates a new [`Library`].
+    ///
+    /// # Arguments
+    ///
+    /// * `names` - The path to each document.
+    /// * `metas` - The term frequency data for each document, where each inner iterator
+    ///   yields `(term, frequency)` pairs.
     pub fn new(
         names: Vec<PathBuf>,
         metas: impl IntoIterator<Item = impl IntoIterator<Item = (String, f64)>>,
@@ -92,6 +99,7 @@ impl Library {
         }
 
         for occ in occurrences.values_mut() {
+            // Sum freq of this term in all docs
             let freq_sum: f64 = occ.iter().map(|x| x.1).sum();
             let idf = (n as f64 / occ.len() as f64).ln();
 

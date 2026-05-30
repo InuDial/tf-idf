@@ -148,7 +148,7 @@ fn search(folder: impl AsRef<Path>, keyword: &str) -> Option<PathBuf> {
         file = fs::File::open(&index_path).unwrap();
     }
 
-    // SAFETY: mmap is unsafe
+    // SAFETY: mmap is an unsafe operation
     let mmap = unsafe { Mmap::map(&file).unwrap() };
     let archived = access::<ArchivedLibrary, rkyv::rancor::Error>(&mmap[8..]).unwrap();
     // The backup plans to be chosen from
