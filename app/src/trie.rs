@@ -1,12 +1,10 @@
-use num_traits::AsPrimitive;
-
 use crate::map::TMapFactory;
 use crate::map::{MapInsert, MapQuery};
 use std::borrow::Borrow;
 use std::sync::LazyLock;
 
 type TrieMapFactory = crate::map::IndexMapFactory<16>;
-type TrieNode = Node<u8, TrieMapFactory>;
+type TrieNode = Node<TrieMapFactory>;
 
 pub static TRIE: LazyLock<TrieNode> = LazyLock::new(|| {
     let mut root = TrieNode::default();
@@ -16,44 +14,47 @@ pub static TRIE: LazyLock<TrieNode> = LazyLock::new(|| {
     root
 });
 
-pub struct Iter<'a> {
-    inner: &'a [u8],
-    first: bool,
+pub struct Iter<It: Iterator> {
+    inner: It,
+    last: Option<u8>,
 }
 
-impl<'a> Iter<'a> {
-    pub fn new(slice: &'a [u8]) -> Self {
+impl<It: Iterator> Iter<It>
+where
+    It::Item: Borrow<u8>,
+{
+    pub fn new(iter: impl IntoIterator<IntoIter = It>) -> Self {
         Self {
-            inner: slice,
-            first: false,
+            inner: iter.into_iter().into(),
+            last: None,
         }
     }
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl<It: Iterator> Iterator for Iter<It>
+where
+    It::Item: Borrow<u8>,
+{
     type Item = u8;
     fn next(&mut self) -> Option<Self::Item> {
-        self.first ^= true;
-        if !self.first {
-            // actually first
-
-            let first = *self.inner.first()?;
-            Some(first & 0x0F)
-        } else {
-            let (c, rest) = self.inner.split_first()?;
-            self.inner = rest;
-            Some((*c >> 4) & 0x0F)
+        if self.last.is_some() {
+            return std::mem::replace(&mut self.last, None);
         }
+        let c = *self.inner.next()?.borrow();
+        let low = c & 0x0F;
+        let high = (c >> 4) & 0x0F;
+        self.last = Some(high);
+        return Some(low);
     }
 }
 
 /// Trie implement. Note that partial seek is not supported.
-pub struct Node<Idx: AsPrimitive<usize>, F: TMapFactory<Idx>> {
+pub struct Node<F: TMapFactory<u8>> {
     value: Option<f64>,
     next: F::MapKind<Box<Self>>,
 }
 
-impl<Idx: AsPrimitive<usize>, F: TMapFactory<Idx>> Default for Node<Idx, F>
+impl<F: TMapFactory<u8>> Default for Node<F>
 where
     F::MapKind<Box<Self>>: Default,
 {
@@ -65,42 +66,41 @@ where
     }
 }
 
-impl<Idx: AsPrimitive<usize>, F: TMapFactory<Idx>> Node<Idx, F> {
+impl<F: TMapFactory<u8>> Node<F> {
     pub fn value(&self) -> Option<f64> {
         self.value
     }
 }
 
-impl<Idx: AsPrimitive<usize>, F: TMapFactory<Idx>> Node<Idx, F>
+impl<F: TMapFactory<u8>> Node<F>
 where
-    F::MapKind<Box<Self>>: MapInsert<Idx, Box<Self>, Idx> + Default,
+    F::MapKind<Box<Self>>: MapInsert<u8, Box<Self>, u8> + Default,
 {
-    pub fn insert(&mut self, path: impl IntoIterator<Item = impl Borrow<Idx>>, value: f64) {
+    pub fn insert(&mut self, path: impl IntoIterator<Item = impl Borrow<u8>>, value: f64) {
         let mut p = self;
-        for c in path {
+        for c in Iter::new(path) {
             p = p.next.get_mut_or_insert_with(c.borrow(), Box::default);
         }
         p.value = Some(value);
     }
 
-    pub fn seek(&self, path: impl IntoIterator<Item = impl Borrow<Idx>>) -> Option<&Self> {
+    pub fn seek(&self, path: impl IntoIterator<Item = impl Borrow<u8>>) -> Option<&Self> {
         let mut p = self;
-        for c in path {
+        for c in Iter::new(path) {
             p = p.next.get(c.borrow())?;
         }
         Some(p)
     }
 }
 
-impl<Idx: AsPrimitive<usize>, F: TMapFactory<Idx>> Node<Idx, F>
+impl<F: TMapFactory<u8>> Node<F>
 where
-    u8: AsPrimitive<Idx>,
-    F::MapKind<Box<Self>>: MapInsert<Idx, Box<Self>, Idx> + Default,
+    F::MapKind<Box<Self>>: MapInsert<u8, Box<Self>, u8> + Default,
 {
     pub fn seek_char(&self, path: char) -> Option<&Self> {
         let mut buf = [0u8; 4];
         let bytes = path.encode_utf8(&mut buf).as_bytes();
-        self.seek(Iter::new(bytes).map(|c| c.as_()))
+        self.seek(bytes)
     }
 }
 
