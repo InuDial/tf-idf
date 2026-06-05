@@ -25,7 +25,7 @@ impl<T, const N: usize> std::ops::IndexMut<usize> for Slice<T, N> {
 
 impl<K: AsPrimitive<usize>, V, const N: usize> Map<K, V> for Slice<V, N> {
     fn insert(&mut self, k: K, v: V) -> Option<V> {
-        std::mem::replace(&mut self[k.as_()], Some(v))
+        self[k.as_()].replace(v)
     }
 }
 

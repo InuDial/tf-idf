@@ -76,18 +76,16 @@ where
     F::MapKind<Box<Self>>: MapInsert<Idx, Box<Self>, Idx> + Default,
 {
     pub fn insert(&mut self, path: impl IntoIterator<Item = impl Borrow<Idx>>, value: f64) {
-        let mut path = path.into_iter();
         let mut p = self;
-        while let Some(c) = path.next() {
+        for c in path {
             p = p.next.get_mut_or_insert_with(c.borrow(), Box::default);
         }
         p.value = Some(value);
     }
 
     pub fn seek(&self, path: impl IntoIterator<Item = impl Borrow<Idx>>) -> Option<&Self> {
-        let mut path = path.into_iter();
         let mut p = self;
-        while let Some(c) = path.next() {
+        for c in path {
             p = p.next.get(c.borrow())?;
         }
         Some(p)
@@ -102,7 +100,7 @@ where
     pub fn seek_char(&self, path: char) -> Option<&Self> {
         let mut buf = [0u8; 4];
         let bytes = path.encode_utf8(&mut buf).as_bytes();
-        self.seek(Iter::new(&bytes).map(|c| c.as_()))
+        self.seek(Iter::new(bytes).map(|c| c.as_()))
     }
 }
 
