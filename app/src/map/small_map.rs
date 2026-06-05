@@ -1,18 +1,12 @@
 use std::borrow::Borrow;
 
-use super::{Init, Map, MapFactory, MapInsert, MapQuery};
+use super::{Map, MapFactory, MapInsert, MapQuery};
 
 pub struct SmallMap<K, V>(Vec<(K, V)>);
 
 impl<K, V> Default for SmallMap<K, V> {
     fn default() -> Self {
         Self(Vec::new())
-    }
-}
-
-impl<K, V> Init for SmallMap<K, V> {
-    fn new() -> Self {
-        Self::default()
     }
 }
 

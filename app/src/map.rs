@@ -12,10 +12,6 @@ pub use index_map::*;
 #[allow(unused_imports)]
 pub use small_map::*;
 
-pub trait Init {
-    fn new() -> Self;
-}
-
 pub trait Map<K, V> {
     fn insert(&mut self, k: K, v: V) -> Option<V>;
 }

@@ -1,12 +1,6 @@
 use std::{borrow::Borrow, collections::HashMap, hash::Hash};
 
-use super::{Init, Map, MapFactory, MapInsert, MapQuery};
-
-impl<K, V> Init for HashMap<K, V> {
-    fn new() -> Self {
-        Self::new()
-    }
-}
+use super::{Map, MapFactory, MapInsert, MapQuery};
 
 impl<K: Hash + Eq, V> Map<K, V> for HashMap<K, V> {
     fn insert(&mut self, k: K, v: V) -> Option<V> {
