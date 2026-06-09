@@ -116,15 +116,13 @@ fn get_library(folder: impl AsRef<Path>) -> Result<Library, Box<dyn Error>> {
             }
             let path = entry.path();
             let rpath = pathdiff::diff_paths(&path, folder).unwrap();
-            let content = match std::fs::read_to_string(&path) {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("Warning: 跳过文件 {:?}, 错误原因: {}", path, e);
-                    return None;
-                }
-            };
 
-            Some((rpath, term_freq(content)))
+            let file = fs::File::open(&path).ok()?;
+            // SAFETY: mmap is an unsafe operation.
+            let mmap = unsafe { Mmap::map(&file).ok()? };
+            let text = std::str::from_utf8(&mmap).ok()?;
+
+            Some((rpath, term_freq(text)))
         })
         .unzip();
 

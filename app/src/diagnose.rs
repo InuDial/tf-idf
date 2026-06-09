@@ -35,6 +35,17 @@ fn main() {
     let n = sample.len();
     eprintln!("Sampling {n} files...");
 
+    // === Warmup: prime CPU + caches ===
+    eprintln!("Warming up...");
+    for path in sample.iter().take(50) {
+        let mut s = String::new();
+        if let Ok(mut f) = fs::File::open(path) {
+            if f.read_to_string(&mut s).is_ok() {
+                let _ = term_freq(&s);
+            }
+        }
+    }
+
     // Phase 1: pure I/O (read to string, no processing)
     let t0 = Instant::now();
     let mut total_bytes = 0u64;
@@ -73,7 +84,7 @@ fn main() {
     let t0 = Instant::now();
     let mut total_terms = 0u64;
     for content in &contents {
-        let tf = term_freq(content.clone());
+        let tf = term_freq(&content);
         total_terms += tf.len() as u64;
     }
     let tf_time = t0.elapsed();
@@ -90,7 +101,7 @@ fn main() {
         if let Ok(mut f) = fs::File::open(path) {
             if f.read_to_string(&mut s).is_ok() {
                 combined_bytes += s.len() as u64;
-                let _tf = term_freq(s);
+                let _tf = term_freq(&s);
             }
         }
     }
