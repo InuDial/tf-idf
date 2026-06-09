@@ -43,6 +43,7 @@ impl<D: Fallible + ?Sized> DeserializeWith<rkyv::vec::ArchivedVec<u8>, PathBuf, 
 }
 
 pub fn term_freq(content: String) -> Vec<(String, f64)> {
+    let _tracy = tracy_client::span!("term_freq");
     let split = tokenize(&content);
     let inv_term_count = 1.0 / (split.len() + 1) as f64;
 
@@ -70,7 +71,7 @@ pub struct Library {
     #[rkyv(with = Map<PathBytes>)]
     pub articles: Vec<PathBuf>,
     /// term -> [(article_id, value)], value = reletive_freq * idf
-    pub tf_idf: HashMap<Term, Vec<(u64, f64)>>,
+    pub tf_idf: HashMap<Term, Vec<(u32, f32)>>,
 }
 
 impl Library {
@@ -85,8 +86,11 @@ impl Library {
         names: Vec<PathBuf>,
         metas: impl IntoIterator<Item = impl IntoIterator<Item = (String, f64)>>,
     ) -> Self {
+        let _tracy = tracy_client::span!("Library::new");
         let n = names.len();
-        let mut occurrences: HashMap<Term, Vec<(u64, f64)>> = HashMap::new();
+
+        // Term -> (doc-id, tf-idf)
+        let mut occurrences: HashMap<Term, Vec<(u32, f64)>> = HashMap::new();
 
         for (id, article) in metas.into_iter().enumerate() {
             for (term, freq) in article {
@@ -94,23 +98,29 @@ impl Library {
                 occurrences
                     .entry(upper.as_str().try_into().unwrap())
                     .or_default()
-                    .push((id as u64, freq));
+                    .push((id as u32, freq));
             }
         }
 
-        for occ in occurrences.values_mut() {
-            // Sum freq of this term in all docs
-            let freq_sum: f64 = occ.iter().map(|x| x.1).sum();
-            let idf = (n as f64 / occ.len() as f64).ln();
+        let tf_idf: HashMap<_, _> = occurrences
+            .into_iter()
+            .map(|(term, occ)| {
+                // Sum freq of this term in all docs
+                let freq_sum: f64 = occ.iter().map(|x| x.1).sum();
+                let idf = (n as f64 / occ.len() as f64).ln();
 
-            for (_i, f) in occ {
-                *f *= idf / freq_sum;
-            }
-        }
+                let values: Vec<_> = occ
+                    .into_iter()
+                    .map(|(doc, freq)| (doc, (freq * idf / freq_sum) as f32))
+                    .collect();
+
+                (term, values)
+            })
+            .collect();
 
         Self {
             articles: names,
-            tf_idf: occurrences,
+            tf_idf,
         }
     }
 }

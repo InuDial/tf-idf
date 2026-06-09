@@ -14,3 +14,8 @@ pathdiff = "0.2.3"
 rayon = "1.12.0"
 rkyv = "0.8.16"
 serde = { version = "1.0.228", features = ["derive"] }
+tracy-client = "0.18"
+
+[features]
+default = []
+tracy = ["tracy-client/enable"]
