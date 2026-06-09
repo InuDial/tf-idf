@@ -37,7 +37,6 @@ impl CharType {
 
 /// Return split points of content
 pub fn tokenize(content: impl AsRef<str>) -> Vec<usize> {
-    let _tracy = tracy_client::span!("tokenize");
     let content: Vec<_> = content.as_ref().char_indices().collect();
     let n = content.len();
     let mut f = vec![0f64; n + 1];

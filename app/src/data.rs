@@ -43,7 +43,6 @@ impl<D: Fallible + ?Sized> DeserializeWith<rkyv::vec::ArchivedVec<u8>, PathBuf, 
 }
 
 pub fn term_freq(content: String) -> Vec<(String, f64)> {
-    let _tracy = tracy_client::span!("term_freq");
     let split = tokenize(&content);
     let inv_term_count = 1.0 / (split.len() + 1) as f64;
 
@@ -86,7 +85,6 @@ impl Library {
         names: Vec<PathBuf>,
         metas: impl IntoIterator<Item = impl IntoIterator<Item = (String, f64)>>,
     ) -> Self {
-        let _tracy = tracy_client::span!("Library::new");
         let n = names.len();
 
         // Term -> (doc-id, tf-idf)
